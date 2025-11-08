@@ -123,14 +123,16 @@ export default function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1> Interview Nest
-</h1>
+        <h1>Interview Nest</h1>
         <div className="mode-buttons">
           {mode !== 'PREP' && (
             <button onClick={() => setMode('PREP')}>Prep Mode</button>
           )}
           {mode === 'PREP' && (
             <button onClick={() => setMode('TOPIC_SELECT')}>Mock Interview</button>
+          )}
+          {mode === 'INTERVIEW' && (
+            <button onClick={() => setMode('TOPIC_SELECT')}>⬅ Back</button>
           )}
         </div>
       </header>
@@ -176,7 +178,6 @@ export default function App() {
         {mode === 'INTERVIEW' && (
           <>
             <h2>{interviewTopic} Interview</h2>
-            <p>Question {questionCount + 1} of 20</p>
             {isLoading && <p className="loading">Generating next question...</p>}
             {error && <p className="error">{error}</p>}
             {currentQuestion && <div className="response">{currentQuestion}</div>}
@@ -198,14 +199,11 @@ export default function App() {
             )}
           </>
         )}
-        
       </main>
-   
-<div className="ai-footer-gif"> 
-    <p>✨By Vaishnavi </p> 
 
-</div>
-
+      <div className="ai-footer-gif">
+        <p>✨ By Vaishnavi</p>
+      </div>
     </div>
   );
 }
