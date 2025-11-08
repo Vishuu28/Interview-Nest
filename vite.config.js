@@ -5,6 +5,6 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   // IMPORTANT: Set the base path to the repository name for GitHub Pages deployment
-  base: '/vaishnavi/', 
+  base: './', 
 })
 
