@@ -1,27 +1,27 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import './App.css';
+import React, { useState, useCallback, useRef, useEffect } from "react";
+import "./App.css";
 
 const apiKey = "AIzaSyBmEaOOF8aRG91P8MuXoM9IWMUKrODQAE4";
-const MODEL_NAME = 'gemini-2.0-flash';
+const MODEL_NAME = "gemini-2.0-flash";
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
 
 export default function App() {
-  const [mode, setMode] = useState('PREP'); // PREP | TOPIC_SELECT | INTERVIEW
-  const [question, setQuestion] = useState('');
-  const [response, setResponse] = useState('');
+  const [mode, setMode] = useState("PREP"); // PREP | TOPIC_SELECT | INTERVIEW
+  const [question, setQuestion] = useState("");
+  const [response, setResponse] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const [resumeText, setResumeText] = useState('');
-  const [interviewTopic, setInterviewTopic] = useState('');
-  const [currentQuestion, setCurrentQuestion] = useState('');
-  const [userInput, setUserInput] = useState('');
+  const [resumeText, setResumeText] = useState("");
+  const [interviewTopic, setInterviewTopic] = useState("");
+  const [currentQuestion, setCurrentQuestion] = useState("");
+  const [userInput, setUserInput] = useState("");
   const [questionCount, setQuestionCount] = useState(0);
 
   const answerRef = useRef(null);
 
   useEffect(() => {
-    if (mode === 'INTERVIEW' && answerRef.current) {
+    if (mode === "INTERVIEW" && answerRef.current) {
       answerRef.current.focus();
     }
   }, [mode, currentQuestion]);
@@ -29,15 +29,14 @@ export default function App() {
   // ✅ Stable input handler — keeps focus while typing
   const handleInputChange = (setter) => (e) => {
     const words = e.target.value.trim().split(/\s+/);
-    if (words.length <= 500) {
-      setter(e.target.value);
-    }
+    if (words.length <= 500) setter(e.target.value);
   };
 
+  // ---------------- FETCH FUNCTION ----------------
   const fetchWithRetry = useCallback(async (payload) => {
     const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
     const data = await response.json();
@@ -49,18 +48,22 @@ export default function App() {
     if (!question.trim()) return;
     setIsLoading(true);
     setError(null);
-    setResponse('');
+    setResponse("");
 
     try {
       const payload = {
         contents: [{ parts: [{ text: question }] }],
         systemInstruction: {
-          parts: [{ text: "You are an expert interview preparation coach. Respond clearly and professionally." }]
-        }
+          parts: [
+            {
+              text: "You are an expert interview preparation coach. Respond clearly and professionally.",
+            },
+          ],
+        },
       };
       const text = await fetchWithRetry(payload);
       setResponse(text);
-    } catch (err) {
+    } catch {
       setError("Error connecting to Gemini API.");
     } finally {
       setIsLoading(false);
@@ -70,25 +73,31 @@ export default function App() {
   // ---------------- INTERVIEW MODE ----------------
   const startInterview = (topic) => {
     setInterviewTopic(topic);
-    setMode('INTERVIEW');
+    setMode("INTERVIEW");
     setQuestionCount(0);
-    getNextQuestion(topic, resumeText, '');
+    getNextQuestion(topic, resumeText, "", true);
   };
 
-  const getNextQuestion = async (topic, resume, lastAnswer) => {
+  const getNextQuestion = async (topic, resume, lastAnswer, first = false) => {
     setIsLoading(true);
     setError(null);
 
     try {
       const prompt = `
-        You are an interviewer for ${topic}.
+        You are a professional interviewer for ${topic}.
         ${resume ? `Candidate resume: ${resume}` : "No resume provided."}
-        Ask the next question (out of 20 total).
-        Last answer: ${lastAnswer}
+        ${
+          first
+            ? "Start the interview with a short greeting and the first question only."
+            : "Based on the last answer, ask the next logical question. Keep it conversational and ask one question at a time."
+        }
+        Avoid numbering (like 'Question 2') or adding extra context.
       `;
       const payload = { contents: [{ parts: [{ text: prompt }] }] };
       const text = await fetchWithRetry(payload);
-      setCurrentQuestion(text);
+
+      // ⏳ Animate question reveal line by line
+      animateText(text);
     } catch {
       setError("Error fetching question.");
     } finally {
@@ -96,12 +105,25 @@ export default function App() {
     }
   };
 
+  // ✨ Smooth "line by line" effect
+  const animateText = (text) => {
+    const lines = text.split("\n").filter((l) => l.trim() !== "");
+    let index = 0;
+    setCurrentQuestion("");
+
+    const interval = setInterval(() => {
+      setCurrentQuestion((prev) => prev + (prev ? "\n" : "") + lines[index]);
+      index++;
+      if (index >= lines.length) clearInterval(interval);
+    }, 400);
+  };
+
   const handleInterviewResponse = async () => {
     if (!userInput.trim()) return;
     const nextCount = questionCount + 1;
     setQuestionCount(nextCount);
     const answer = userInput;
-    setUserInput('');
+    setUserInput("");
 
     if (nextCount < 20) {
       await getNextQuestion(interviewTopic, resumeText, answer);
@@ -112,10 +134,10 @@ export default function App() {
 
   // ---------------- KEY HANDLING ----------------
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (mode === 'PREP') handlePrepAsk();
-      else if (mode === 'INTERVIEW') handleInterviewResponse();
+      if (mode === "PREP") handlePrepAsk();
+      else if (mode === "INTERVIEW") handleInterviewResponse();
     }
   };
 
@@ -125,20 +147,22 @@ export default function App() {
       <header className="header">
         <h1>Interview Nest</h1>
         <div className="mode-buttons">
-          {mode !== 'PREP' && (
-            <button onClick={() => setMode('PREP')}>Prep Mode</button>
+          {mode !== "PREP" && (
+            <button onClick={() => setMode("PREP")}>Prep Mode</button>
           )}
-          {mode === 'PREP' && (
-            <button onClick={() => setMode('TOPIC_SELECT')}>Mock Interview</button>
+          {mode === "PREP" && (
+            <button onClick={() => setMode("TOPIC_SELECT")}>
+              Mock Interview
+            </button>
           )}
-          {mode === 'INTERVIEW' && (
-            <button onClick={() => setMode('TOPIC_SELECT')}>⬅ Back</button>
+          {mode === "INTERVIEW" && (
+            <button onClick={() => setMode("TOPIC_SELECT")}>⬅ Back</button>
           )}
         </div>
       </header>
 
       <main className="content">
-        {mode === 'PREP' && (
+        {mode === "PREP" && (
           <>
             <textarea
               rows={6}
@@ -147,7 +171,10 @@ export default function App() {
               onKeyDown={handleKeyDown}
               placeholder="Type your question here (max 500 words)"
             />
-            <button onClick={handlePrepAsk} disabled={isLoading || !question.trim()}>
+            <button
+              onClick={handlePrepAsk}
+              disabled={isLoading || !question.trim()}
+            >
               {isLoading ? "Thinking..." : "Ask Query"}
             </button>
             {isLoading && <p className="loading">Loading...</p>}
@@ -156,7 +183,7 @@ export default function App() {
           </>
         )}
 
-        {mode === 'TOPIC_SELECT' && (
+        {mode === "TOPIC_SELECT" && (
           <>
             <h2>Select Interview Topic</h2>
             <textarea
@@ -166,7 +193,13 @@ export default function App() {
               placeholder="Paste your resume here (max 500 words)"
             />
             <div className="buttons-grid">
-              {['Frontend', 'Full Stack', 'Data Analyst', 'Data Scientist', 'HR'].map(topic => (
+              {[
+                "Frontend",
+                "Full Stack",
+                "Data Analyst",
+                "Data Scientist",
+                "HR",
+              ].map((topic) => (
                 <button key={topic} onClick={() => startInterview(topic)}>
                   {topic}
                 </button>
@@ -175,12 +208,16 @@ export default function App() {
           </>
         )}
 
-        {mode === 'INTERVIEW' && (
+        {mode === "INTERVIEW" && (
           <>
             <h2>{interviewTopic} Interview</h2>
             {isLoading && <p className="loading">Generating next question...</p>}
             {error && <p className="error">{error}</p>}
-            {currentQuestion && <div className="response">{currentQuestion}</div>}
+            {currentQuestion && (
+              <div className="response" style={{ whiteSpace: "pre-line" }}>
+                {currentQuestion}
+              </div>
+            )}
 
             {questionCount < 20 && (
               <>
@@ -192,7 +229,10 @@ export default function App() {
                   onKeyDown={handleKeyDown}
                   placeholder="Type your answer here (max 500 words)"
                 />
-                <button onClick={handleInterviewResponse} disabled={isLoading || !userInput.trim()}>
+                <button
+                  onClick={handleInterviewResponse}
+                  disabled={isLoading || !userInput.trim()}
+                >
                   Submit Answer
                 </button>
               </>
